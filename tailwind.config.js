@@ -1,0 +1,75 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        'mets-blue': '#002D72',
+        'mets-blue-light': '#1E6DC5',
+        'mets-orange': '#FF5910',
+        'mets-orange-light': '#FF8A50',
+        'bg-deep': '#040C18',
+        'bg-dark': '#070F1C',
+        'bg-card': '#0A1628',
+        'bg-card-hover': '#0E1E38',
+        'bg-panel': '#0D1F35',
+        'stat-green': '#22D3A5',
+        'stat-red': '#FF4D6D',
+        'stat-gold': '#FFD700',
+        'stat-blue': '#60B4FF',
+        'stat-purple': '#B47AFF',
+        'border-subtle': '#1A2E48',
+        'border-glow': '#1E4A7A',
+        'text-primary': '#E8F4FD',
+        'text-secondary': '#8BAFC8',
+        'text-muted': '#4A6A88',
+      },
+      fontFamily: {
+        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      backgroundImage: {
+        'gradient-mets': 'linear-gradient(135deg, #002D72 0%, #001540 100%)',
+        'gradient-card': 'linear-gradient(180deg, #0E1E38 0%, #0A1628 100%)',
+        'gradient-orange': 'linear-gradient(135deg, #FF5910 0%, #CC3A00 100%)',
+        'gradient-live': 'linear-gradient(90deg, #FF5910 0%, #FF8A50 100%)',
+        'gradient-win': 'linear-gradient(90deg, #002D72 0%, #22D3A5 100%)',
+        'gradient-lose': 'linear-gradient(90deg, #8B0000 0%, #FF4D6D 100%)',
+        'glow-blue': 'radial-gradient(ellipse at center, rgba(30,109,197,0.15) 0%, transparent 70%)',
+        'glow-orange': 'radial-gradient(ellipse at center, rgba(255,89,16,0.15) 0%, transparent 70%)',
+      },
+      boxShadow: {
+        'card': '0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.03) inset',
+        'card-hover': '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(30,109,197,0.3)',
+        'glow-blue': '0 0 20px rgba(30,109,197,0.4)',
+        'glow-orange': '0 0 20px rgba(255,89,16,0.5)',
+        'glow-green': '0 0 16px rgba(34,211,165,0.4)',
+        'stat': '0 2px 8px rgba(0,0,0,0.3)',
+        'inner-glow': 'inset 0 1px 0 rgba(255,255,255,0.05)',
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'glow': 'glow 2s ease-in-out infinite alternate',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'fade-in': 'fadeIn 0.4s ease-out',
+        'count-up': 'countUp 0.5s ease-out',
+        'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+      },
+      keyframes: {
+        glow: {
+          '0%': { boxShadow: '0 0 5px rgba(30,109,197,0.3)' },
+          '100%': { boxShadow: '0 0 20px rgba(30,109,197,0.6), 0 0 40px rgba(30,109,197,0.2)' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+      },
+    },
+  },
+  plugins: [],
+}
