@@ -122,51 +122,18 @@ export function LiveGameDashboard({ state }: LiveGameDashboardProps) {
         {isMetsBatting ? (
           <BattingMode
             feed={game}
-            batterStats={currentBatterStats ?? createEmptyStats()}
+            batterStats={currentBatterStats ?? {}}
             isMetsBatting={true}
           />
         ) : (
           <PitchingMode
             feed={game}
-            pitcherStats={currentPitcherStats ?? createEmptyStats()}
-            batterStats={currentBatterStats ?? createEmptyStats()}
+            pitcherStats={currentPitcherStats ?? {}}
+            batterStats={currentBatterStats ?? {}}
             isMetsPitching={true}
           />
         )}
       </div>
     </div>
   )
-}
-
-function createEmptyStats() {
-  return {
-    batting: {
-      avg: 0.250, obp: 0.330, slg: 0.420, ops: 0.750, woba: 0.320,
-      iso: 0.170, babip: 0.295, bbPct: 0.090, kPct: 0.220, bbk: 0.41,
-      hardHitPct: 0.41, avgExitVelo: 89.0, avgLaunchAngle: 14.0, barrelPct: 0.085,
-      xba: 0.248, xslg: 0.415, xwoba: 0.318, sprintSpeed: 27.0,
-      pullPct: 0.38, centPct: 0.36, oppoPct: 0.26, gbPct: 0.42, fbPct: 0.38, ldPct: 0.20,
-      softPct: 0.15, medPct: 0.45, hrTotal: 15, rbi: 55, runs: 50, sb: 8, cs: 2, sbPct: 0.80,
-      wrcPlus: 110, war: 2.1, opsPlus: 110, risp: 0.310, clutch: 0.1,
-      vsLHP: 0.760, vsRHP: 0.740, homeOps: 0.760, awayOps: 0.740,
-      last30Ops: [0.72, 0.74, 0.78, 0.75, 0.75],
-    },
-    pitching: {
-      era: 3.85, fip: 3.60, xfip: 3.70, siera: 3.55, whip: 1.20,
-      k9: 9.2, bb9: 2.8, h9: 8.5, hr9: 1.1, kPct: 0.24, bbPct: 0.07, kbb: 3.29,
-      kbbPct: 0.17, hrfb: 0.095, gbPct: 0.44, fbPct: 0.37, ldPct: 0.19,
-      lobPct: 0.72, swStrPct: 0.118, cswPct: 0.285, zonePct: 0.455,
-      chasePct: 0.295, contactPct: 0.775, fStrikePct: 0.625,
-      avgFBVelo: 94.2, avgSpinRate: 2310, stuffPlus: 105, locationPlus: 108, pitchingPlus: 112,
-      war: 2.5, ip: '120.1', wins: 8, losses: 6, saves: 0, holds: 0, qs: 10,
-      last5ERA: [3.5, 4.1, 2.8, 3.9, 3.2],
-      pitchMix: [
-        { type: 'Four-Seam FB', code: 'FF', usage: 0.45, avgVelo: 94.2, avgSpin: 2310, whiffPct: 0.22, putawayPct: 0.28, runValue: -2.1, color: '#FF5910' },
-        { type: 'Slider', code: 'SL', usage: 0.22, avgVelo: 87.1, avgSpin: 2450, whiffPct: 0.38, putawayPct: 0.42, runValue: -1.8, color: '#1E6DC5' },
-        { type: 'Changeup', code: 'CH', usage: 0.18, avgVelo: 85.3, avgSpin: 1820, whiffPct: 0.29, putawayPct: 0.31, runValue: -0.9, color: '#22D3A5' },
-        { type: 'Curveball', code: 'CU', usage: 0.12, avgVelo: 79.4, avgSpin: 2680, whiffPct: 0.35, putawayPct: 0.38, runValue: -1.2, color: '#B47AFF' },
-        { type: 'Cutter', code: 'FC', usage: 0.03, avgVelo: 91.1, avgSpin: 2180, whiffPct: 0.18, putawayPct: 0.22, runValue: 0.3, color: '#FFD700' },
-      ],
-    },
-  }
 }

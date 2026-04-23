@@ -1,26 +1,39 @@
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts'
-import type { LiveGameFeed, PlayerDetailStats } from '../../types/mlb'
-import { StatCard, StatRow, SectionHeader } from '../shared/StatCard'
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts'
+import type { LiveGameFeed } from '../../types/mlb'
+import type { RealBattingStats } from '../../utils/mlbApi'
+import { StatCard, SectionHeader } from '../shared/StatCard'
 import { BaseRunners } from '../shared/BaseRunners'
-import { GaugeChart, ProgressBar, WinProbBar } from '../shared/GaugeChart'
+import { GaugeChart, WinProbBar } from '../shared/GaugeChart'
 import { StrikeZone } from '../shared/StrikeZone'
-import { WinProbChart, Sparkline } from '../shared/WinProbChart'
+import { WinProbChart } from '../shared/WinProbChart'
 import {
-  fmtAvg, fmtPct, fmtNum, fmtOPS, fmtWAR, fmtPlus,
+  fmtAvg, fmtPct, fmtOPS, fmtPlus, fmtInt,
   getStatQuality, qualityColor, inningDisplay
 } from '../../utils/formatters'
 import { getRunExpectancy, calcWinProbability } from '../../utils/mlbApi'
 
 interface BattingModeProps {
   feed: LiveGameFeed
-  batterStats: PlayerDetailStats
+  batterStats: RealBattingStats
   isMetsBatting: boolean
+}
+
+function Gauge(props: { value: number | undefined; min: number; max: number; label: string; unit?: string }) {
+  if (props.value === undefined) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <div className="flex items-center justify-center font-mono text-xl font-black" style={{ height: 53, color: '#4A6A88' }}>--</div>
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#8BAFC8' }}>{props.label}</span>
+      </div>
+    )
+  }
+  return <GaugeChart value={props.value} min={props.min} max={props.max} label={props.label} unit={props.unit} size={70} />
 }
 
 export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModeProps) {
   const ls = feed.liveData.linescore
   const cp = feed.liveData.plays.currentPlay
-  const bs = batterStats.batting
+  const bs = batterStats
   const metsIsHome = feed.gameData.teams.home.id === 121
   const metsScore = metsIsHome ? ls.teams.home.runs : ls.teams.away.runs
   const oppScore = metsIsHome ? ls.teams.away.runs : ls.teams.home.runs
@@ -44,7 +57,7 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
   const li = outs < 2 ? (onFirst || onSecond || onThird ? 1.5 : 0.8) : 1.2
 
   const allPlays = feed.liveData.plays.allPlays ?? []
-  const wpHistory = allPlays.slice(-20).map((play, i) => ({
+  const wpHistory = allPlays.slice(-20).map(play => ({
     label: `${play.about.inning}${play.about.isTopInning ? 'T' : 'B'}`,
     prob: calcWinProbability(
       play.result.homeScore ?? metsScore ?? 0,
@@ -59,20 +72,12 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
   wpHistory.push({ label: 'Now', prob: winProb, event: undefined })
 
   const radarData = [
-    { metric: 'Contact', value: Math.min(100, (1 - bs.kPct) * 100) },
-    { metric: 'Power', value: Math.min(100, bs.iso * 400) },
-    { metric: 'Eye', value: Math.min(100, bs.bbPct * 500) },
-    { metric: 'Speed', value: Math.min(100, (bs.sprintSpeed - 23) / 7 * 100) },
-    { metric: 'Hard Hit', value: Math.min(100, bs.hardHitPct * 180) },
-    { metric: 'xStats', value: Math.min(100, bs.xwoba * 250) },
-  ]
-
-  const splitData = [
-    { name: 'vs LHP', ops: bs.vsLHP, fill: '#1E6DC5' },
-    { name: 'vs RHP', ops: bs.vsRHP, fill: '#FF5910' },
-    { name: 'Home', ops: bs.homeOps, fill: '#22D3A5' },
-    { name: 'Away', ops: bs.awayOps, fill: '#B47AFF' },
-    { name: 'RISP', ops: bs.risp, fill: '#FFD700' },
+    { metric: 'Contact', value: bs.kPct !== undefined ? Math.min(100, (1 - bs.kPct) * 140) : 0 },
+    { metric: 'Power', value: bs.iso !== undefined ? Math.min(100, bs.iso * 400) : 0 },
+    { metric: 'Eye', value: bs.bbPct !== undefined ? Math.min(100, bs.bbPct * 500) : 0 },
+    { metric: 'Barrel%', value: bs.barrelPct !== undefined ? Math.min(100, bs.barrelPct * 10) : 0 },
+    { metric: 'Hard Hit', value: bs.hardHitPct !== undefined ? Math.min(100, bs.hardHitPct * 180) : 0 },
+    { metric: 'xStats', value: bs.xwoba !== undefined ? Math.min(100, bs.xwoba * 250) : 0 },
   ]
 
   const inningLabel = inningDisplay(ls.currentInning, ls.isTopInning)
@@ -99,15 +104,13 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
                 {currentBatter?.fullName ?? '—'}
               </div>
               <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#8BAFC8' }}>
-                {isMetsBatting ? 'NYM · BATTING' : `OPP · BATTING`}
+                {isMetsBatting ? 'NYM · BATTING' : 'OPP · BATTING'}
               </div>
             </div>
           </div>
 
           <div className="text-center mb-3">
-            <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: '#4A6A88' }}>
-              FACING
-            </div>
+            <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: '#4A6A88' }}>FACING</div>
             <div className="text-xs font-bold" style={{ color: '#8BAFC8' }}>
               {currentPitcher?.fullName ?? '—'}
             </div>
@@ -125,20 +128,14 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
             <div className="text-[9px] uppercase tracking-widest" style={{ color: '#8BAFC8' }}>OPS</div>
             <div className="font-mono text-2xl font-black" style={{
               color: qualityColor(getStatQuality('ops', bs.ops)),
-              textShadow: '0 0 20px currentColor',
             }}>
               {fmtOPS(bs.ops)}
-            </div>
-            <div className="flex justify-center mt-1">
-              <Sparkline data={bs.last30Ops} color={qualityColor(getStatQuality('ops', bs.ops))} />
             </div>
           </div>
         </div>
 
         {/* Count + Situation */}
-        <div className="rounded-xl p-3" style={{
-          background: '#0A1628', border: '1px solid #1A2E48',
-        }}>
+        <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="At-Bat" accent="orange" />
           <div className="flex justify-between items-center mb-3">
             <div className="text-center">
@@ -218,16 +215,14 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
         {/* Win Probability */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <WinProbBar metsProb={winProb} metsName="NYM" oppName={
-            metsIsHome
-              ? feed.gameData.teams.away.abbreviation
-              : feed.gameData.teams.home.abbreviation
+            metsIsHome ? feed.gameData.teams.away.abbreviation : feed.gameData.teams.home.abbreviation
           } />
           <div className="mt-2">
             <WinProbChart data={wpHistory} currentProb={winProb} compact />
           </div>
         </div>
 
-        {/* Advanced Batting Metrics Grid */}
+        {/* Advanced Batting Metrics */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Advanced Metrics" accent="blue" />
           <div className="grid grid-cols-4 gap-2">
@@ -242,39 +237,46 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
           </div>
         </div>
 
-        {/* Statcast Metrics */}
+        {/* Statcast */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Statcast" accent="orange" />
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <GaugeChart value={bs.avgExitVelo} min={80} max={100} label="Exit Velo" unit=" mph" size={70} />
-            <GaugeChart value={bs.barrelPct * 100} min={0} max={20} label="Barrel%" unit="%" size={70} />
-            <GaugeChart value={bs.hardHitPct * 100} min={20} max={70} label="Hard Hit%" unit="%" size={70} />
+          <div className="flex justify-around mb-3">
+            <Gauge value={bs.exitVelo} min={80} max={100} label="Exit Velo" unit=" mph" />
+            <Gauge value={bs.barrelPct !== undefined ? bs.barrelPct * 100 : undefined} min={0} max={20} label="Barrel%" unit="%" />
+            <Gauge value={bs.hardHitPct !== undefined ? bs.hardHitPct * 100 : undefined} min={20} max={70} label="Hard Hit%" unit="%" />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <ProgressBar value={bs.gbPct} label="GB%" valueDisplay={fmtPct(bs.gbPct)} color="#60B4FF" />
-            <ProgressBar value={bs.fbPct} label="FB%" valueDisplay={fmtPct(bs.fbPct)} color="#FF5910" />
-            <ProgressBar value={bs.ldPct} label="LD%" valueDisplay={fmtPct(bs.ldPct)} color="#22D3A5" />
-            <ProgressBar value={bs.xslg} max={0.8} label="xSLG" valueDisplay={fmtAvg(bs.xslg)} color="#B47AFF" />
+            {[
+              ['xSLG', fmtAvg(bs.xslg)],
+              ['xOBP', fmtAvg(bs.xobp)],
+              ['Exit Velo', bs.exitVelo !== undefined ? `${bs.exitVelo.toFixed(1)} mph` : '--'],
+              ['Avg LA', bs.launchAngle !== undefined ? `${bs.launchAngle.toFixed(1)}°` : '--'],
+            ].map(([l, v]) => (
+              <div key={String(l)} className="flex justify-between rounded-lg px-2 py-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #1A2E48' }}>
+                <span className="text-[11px] font-semibold" style={{ color: '#8BAFC8' }}>{String(l)}</span>
+                <span className="font-mono text-xs font-bold" style={{ color: '#E8F4FD' }}>{String(v)}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Plate Discipline */}
+        {/* Season Counting Stats */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
-          <SectionHeader title="Plate Discipline" accent="green" />
+          <SectionHeader title="Season Counting Stats" accent="green" />
           <div className="grid grid-cols-4 gap-2">
-            <StatCard label="BB/K" value={fmtNum(bs.bbk)} size="sm"
-              statKey="bbPct" rawValue={bs.bbk} showBadge={false} />
-            <StatCard label="Sprint" value={`${fmtNum(bs.sprintSpeed)}`} size="sm"
-              subValue="ft/s" showBadge={false} />
-            <StatCard label="WAR" value={fmtWAR(bs.war)} statKey="war" rawValue={bs.war} size="sm" />
-            <StatCard label="Clutch" value={fmtNum(bs.clutch, 2)} size="sm"
-              showBadge={false}
-              highlight={bs.clutch > 0} />
+            <StatCard label="HR" value={fmtInt(bs.hr)} size="sm" showBadge={false} />
+            <StatCard label="RBI" value={fmtInt(bs.rbi)} size="sm" showBadge={false} />
+            <StatCard label="R" value={fmtInt(bs.runs)} size="sm" showBadge={false} />
+            <StatCard label="H" value={fmtInt(bs.hits)} size="sm" showBadge={false} />
+            <StatCard label="2B" value={fmtInt(bs.doubles)} size="sm" showBadge={false} />
+            <StatCard label="3B" value={fmtInt(bs.triples)} size="sm" showBadge={false} />
+            <StatCard label="SB" value={fmtInt(bs.sb)} size="sm" showBadge={false} />
+            <StatCard label="BB" value={fmtInt(bs.bb)} size="sm" showBadge={false} />
           </div>
         </div>
       </div>
 
-      {/* RIGHT COLUMN - Visual Charts + Splits */}
+      {/* RIGHT COLUMN - Charts */}
       <div className="col-span-4 flex flex-col gap-3">
 
         {/* Strike Zone Map */}
@@ -282,7 +284,7 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
           <StrikeZone pitches={pitchEvents} size={200} />
         </div>
 
-        {/* Player Radar */}
+        {/* Player Profile Radar */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Player Profile" accent="blue" />
           <div style={{ height: 160 }}>
@@ -298,62 +300,21 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
           </div>
         </div>
 
-        {/* Splits */}
+        {/* Expected Stats */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
-          <SectionHeader title="Splits (OPS)" accent="orange" />
-          <div style={{ height: 120 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={splitData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fill: '#8BAFC8', fontSize: 9 }} tickLine={false} axisLine={false} />
-                <YAxis domain={[0.4, 1.1]} tick={{ fill: '#4A6A88', fontSize: 8 }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  formatter={(v: number) => [fmtOPS(v), 'OPS']}
-                  contentStyle={{ background: '#0A1628', border: '1px solid #1A2E48', borderRadius: 8 }}
-                  labelStyle={{ color: '#8BAFC8' }}
-                  itemStyle={{ color: '#E8F4FD' }}
-                />
-                <Bar dataKey="ops" radius={[4, 4, 0, 0]}>
-                  {splitData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Direction Spray */}
-        <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
-          <SectionHeader title="Batted Ball Profile" accent="green" />
-          <div className="space-y-2">
-            <div className="flex gap-1">
-              {['PULL', 'CENTER', 'OPPO'].map((dir, i) => {
-                const vals = [bs.pullPct, bs.centPct, bs.oppoPct]
-                const colors = ['#FF5910', '#22D3A5', '#1E6DC5']
-                return (
-                  <div key={dir} className="flex-1 text-center rounded-lg p-2" style={{
-                    background: `${colors[i]}15`, border: `1px solid ${colors[i]}40`,
-                  }}>
-                    <div className="text-[9px] uppercase tracking-wider" style={{ color: colors[i] }}>{dir}</div>
-                    <div className="font-mono text-sm font-bold" style={{ color: '#E8F4FD' }}>
-                      {fmtPct(vals[i])}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {[['SOFT', bs.softPct, '#8BAFC8'], ['MED', bs.medPct, '#FFB347'], ['HARD', bs.hardHitPct, '#22D3A5']].map(([l, v, c]) => (
-                <div key={String(l)} className="text-center rounded-lg p-1.5" style={{
-                  background: `${c}10`, border: `1px solid ${c}30`,
-                }}>
-                  <div className="text-[9px] uppercase" style={{ color: String(c) }}>{String(l)}</div>
-                  <div className="font-mono text-xs font-bold" style={{ color: '#E8F4FD' }}>
-                    {fmtPct(Number(v))}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <SectionHeader title="Expected Stats" accent="orange" />
+          <div className="space-y-1.5">
+            {[
+              ['xBA', fmtAvg(bs.xba)],
+              ['xSLG', fmtAvg(bs.xslg)],
+              ['xOBP', fmtAvg(bs.xobp)],
+              ['xwOBA', fmtAvg(bs.xwoba)],
+            ].map(([l, v]) => (
+              <div key={String(l)} className="flex justify-between py-1 border-b border-white/5 last:border-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#8BAFC8' }}>{String(l)}</span>
+                <span className="font-mono text-xs font-bold" style={{ color: '#E8F4FD' }}>{String(v)}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -375,20 +336,16 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
           <SectionHeader title="Complete Season Stats" accent="blue" />
           <div className="grid grid-cols-8 gap-1">
             {[
-              ['HR', String(bs.hrTotal), 'hrTotal', bs.hrTotal],
-              ['RBI', String(bs.rbi), undefined, 0],
-              ['R', String(bs.runs), undefined, 0],
-              ['SB', String(bs.sb), undefined, 0],
-              ['SB%', fmtPct(bs.sbPct), undefined, 0],
-              ['OPS+', fmtPlus(bs.opsPlus), 'wrcPlus', bs.opsPlus],
-              ['xBA', fmtAvg(bs.xba), 'xba', bs.xba],
-              ['xSLG', fmtAvg(bs.xslg), undefined, 0],
-            ].map(([l, v, k, r]) => (
-              <StatCard key={String(l)} label={String(l)} value={String(v)}
-                statKey={k as string | undefined}
-                rawValue={typeof r === 'number' && k ? r : undefined}
-                size="sm" showBadge={false}
-              />
+              ['G', fmtInt(bs.gamesPlayed)],
+              ['PA', fmtInt(bs.pa)],
+              ['AB', fmtInt(bs.ab)],
+              ['HR', fmtInt(bs.hr)],
+              ['RBI', fmtInt(bs.rbi)],
+              ['SB', fmtInt(bs.sb)],
+              ['xBA', fmtAvg(bs.xba)],
+              ['xSLG', fmtAvg(bs.xslg)],
+            ].map(([l, v]) => (
+              <StatCard key={String(l)} label={String(l)} value={String(v)} size="sm" showBadge={false} />
             ))}
           </div>
         </div>

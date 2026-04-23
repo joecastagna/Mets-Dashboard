@@ -1,34 +1,41 @@
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer, LineChart, Line } from 'recharts'
-import type { LiveGameFeed, PlayerDetailStats, PitchMixItem } from '../../types/mlb'
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
+import type { LiveGameFeed } from '../../types/mlb'
+import type { RealPitchingStats, RealBattingStats } from '../../utils/mlbApi'
 import { StatCard, SectionHeader } from '../shared/StatCard'
 import { BaseRunners } from '../shared/BaseRunners'
-import { GaugeChart, ProgressBar, WinProbBar } from '../shared/GaugeChart'
-import { StrikeZone, HeatZone } from '../shared/StrikeZone'
+import { GaugeChart, WinProbBar } from '../shared/GaugeChart'
+import { StrikeZone } from '../shared/StrikeZone'
 import { WinProbChart } from '../shared/WinProbChart'
 import {
-  fmtAvg, fmtPct, fmtERA, fmtNum, fmtWHIP, fmtK9, fmtWAR, fmtPlus, fmtVelo,
+  fmtAvg, fmtPct, fmtERA, fmtNum, fmtWHIP, fmtK9,
   getStatQuality, qualityColor, inningDisplay
 } from '../../utils/formatters'
 import { getRunExpectancy, calcWinProbability } from '../../utils/mlbApi'
 
 interface PitchingModeProps {
   feed: LiveGameFeed
-  pitcherStats: PlayerDetailStats
-  batterStats: PlayerDetailStats
+  pitcherStats: RealPitchingStats
+  batterStats: RealBattingStats
   isMetsPitching: boolean
 }
 
-const USAGE_HEAT: number[][] = [
-  [0.12, 0.28, 0.08],
-  [0.22, 0.38, 0.18],
-  [0.06, 0.15, 0.06],
-]
+function Gauge(props: { value: number | undefined; min: number; max: number; label: string; unit?: string; colorOverride?: string }) {
+  if (props.value === undefined) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <div className="flex items-center justify-center font-mono text-xl font-black" style={{ height: 53, color: '#4A6A88' }}>--</div>
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#8BAFC8' }}>{props.label}</span>
+      </div>
+    )
+  }
+  return <GaugeChart value={props.value} min={props.min} max={props.max} label={props.label} unit={props.unit} size={70} colorOverride={props.colorOverride} />
+}
 
 export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }: PitchingModeProps) {
   const ls = feed.liveData.linescore
   const cp = feed.liveData.plays.currentPlay
-  const ps = pitcherStats.pitching
-  const bs = batterStats.batting
+  const ps = pitcherStats
+  const bs = batterStats
   const metsIsHome = feed.gameData.teams.home.id === 121
   const metsScore = metsIsHome ? ls.teams.home.runs : ls.teams.away.runs
   const oppScore = metsIsHome ? ls.teams.away.runs : ls.teams.home.runs
@@ -69,19 +76,12 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
 
   const inningLabel = inningDisplay(ls.currentInning, ls.isTopInning)
 
-  const pitchMixData = ps.pitchMix.map(p => ({ ...p, veloDisplay: `${fmtVelo(p.avgVelo)} mph` }))
-
-  const arsenalRadar = ps.pitchMix.map(p => ({
-    pitch: p.type.split('-')[0].split(' ')[0],
-    velo: (p.avgVelo - 70) / (100 - 70) * 100,
-    whiff: p.whiffPct * 200,
-    usage: p.usage * 100,
-  }))
+  const pitchMix = ps.pitchMix ?? []
 
   return (
     <div className="grid grid-cols-12 gap-3 p-3 animate-fade-in">
 
-      {/* LEFT COLUMN - Pitcher Info + ERA/FIP/xFIP */}
+      {/* LEFT COLUMN - Pitcher Info + ERA/FIP */}
       <div className="col-span-3 flex flex-col gap-3">
 
         {/* Pitcher Card */}
@@ -131,9 +131,9 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
           </div>
 
           <div className="grid grid-cols-3 gap-1 mt-2">
-            <StatCard label="xFIP" value={fmtERA(ps.xfip)} statKey="xfip" rawValue={ps.xfip} size="sm" />
-            <StatCard label="SIERA" value={fmtERA(ps.siera)} size="sm" showBadge={false} />
+            <StatCard label="xERA" value={fmtERA(ps.xera)} statKey="xera" rawValue={ps.xera} size="sm" />
             <StatCard label="WHIP" value={fmtWHIP(ps.whip)} statKey="whip" rawValue={ps.whip} size="sm" />
+            <StatCard label="BABIP" value={fmtAvg(ps.babip)} statKey="babip" rawValue={ps.babip} size="sm" />
           </div>
         </div>
 
@@ -161,13 +161,13 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
           </div>
         </div>
 
-        {/* K/9 + BB/9 Gauges */}
+        {/* Rate Stat Gauges */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Rate Stats" accent="green" />
           <div className="flex justify-around">
-            <GaugeChart value={ps.k9} min={4} max={15} label="K/9" size={70} colorOverride="#22D3A5" />
-            <GaugeChart value={ps.bb9} min={1} max={5} label="BB/9" size={70} colorOverride="#FF4D6D" />
-            <GaugeChart value={ps.kbb} min={1} max={7} label="K/BB" size={70} colorOverride="#60B4FF" />
+            <Gauge value={ps.k9} min={4} max={15} label="K/9" colorOverride="#22D3A5" />
+            <Gauge value={ps.bb9} min={1} max={5} label="BB/9" colorOverride="#FF4D6D" />
+            <Gauge value={ps.kbb} min={1} max={7} label="K/BB" colorOverride="#60B4FF" />
           </div>
         </div>
 
@@ -234,31 +234,37 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
         {/* Pitch Arsenal */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Pitch Arsenal" accent="orange" />
-          <div className="space-y-2">
-            {pitchMixData.map((p: PitchMixItem) => (
-              <div key={p.code} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
-                <div className="text-[10px] font-bold w-16 truncate" style={{ color: '#8BAFC8' }}>{p.type}</div>
-                <div className="flex-1">
-                  <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#1A2E48' }}>
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${p.usage * 100}%`, background: `linear-gradient(90deg, ${p.color}80, ${p.color})` }} />
+          {pitchMix.length > 0 ? (
+            <div className="space-y-2">
+              {pitchMix.map(p => (
+                <div key={p.code} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
+                  <div className="text-[10px] font-bold w-16 truncate" style={{ color: '#8BAFC8' }}>{p.name}</div>
+                  <div className="flex-1">
+                    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#1A2E48' }}>
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${p.usage * 100}%`, background: `linear-gradient(90deg, ${p.color}80, ${p.color})` }} />
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-mono font-bold w-10 text-right" style={{ color: '#E8F4FD' }}>
+                    {fmtPct(p.usage)}
+                  </div>
+                  <div className="text-[10px] font-mono w-14 text-right" style={{ color: '#8BAFC8' }}>
+                    {p.avgVelo !== undefined ? `${p.avgVelo.toFixed(1)} mph` : '--'}
+                  </div>
+                  <div className="text-[10px] font-mono w-14 text-right" style={{
+                    color: p.runValue !== undefined
+                      ? (p.runValue <= -1 ? '#22D3A5' : p.runValue >= 1 ? '#FF4D6D' : '#FFB347')
+                      : '#8BAFC8',
+                  }}>
+                    {p.runValue !== undefined ? `${p.runValue > 0 ? '+' : ''}${p.runValue.toFixed(1)} RV` : '--'}
                   </div>
                 </div>
-                <div className="text-[10px] font-mono font-bold w-10 text-right" style={{ color: '#E8F4FD' }}>
-                  {fmtPct(p.usage)}
-                </div>
-                <div className="text-[10px] font-mono w-12 text-right" style={{ color: '#8BAFC8' }}>
-                  {fmtVelo(p.avgVelo)}mph
-                </div>
-                <div className="text-[10px] font-mono w-12 text-right" style={{
-                  color: p.whiffPct >= 0.35 ? '#22D3A5' : p.whiffPct >= 0.25 ? '#FFB347' : '#FF4D6D',
-                }}>
-                  {fmtPct(p.whiffPct, 0)} whiff
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-center py-4" style={{ color: '#4A6A88' }}>No arsenal data</div>
+          )}
         </div>
 
         {/* Advanced Pitching Metrics */}
@@ -267,42 +273,16 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
           <div className="grid grid-cols-4 gap-2">
             <StatCard label="K%" value={fmtPct(ps.kPct)} statKey="kPctP" rawValue={ps.kPct} size="sm" />
             <StatCard label="BB%" value={fmtPct(ps.bbPct)} statKey="bbPctP" rawValue={ps.bbPct} size="sm" />
-            <StatCard label="K-BB%" value={fmtPct(ps.kbbPct)} size="sm" showBadge={false} />
-            <StatCard label="HR/FB%" value={fmtPct(ps.hrfb)} size="sm" showBadge={false} />
-            <StatCard label="SwStr%" value={fmtPct(ps.swStrPct)} statKey="swStrPct" rawValue={ps.swStrPct} size="sm" />
-            <StatCard label="CSW%" value={fmtPct(ps.cswPct)} statKey="cswPct" rawValue={ps.cswPct} size="sm" />
-            <StatCard label="Zone%" value={fmtPct(ps.zonePct)} size="sm" showBadge={false} />
-            <StatCard label="Chase%" value={fmtPct(ps.chasePct)} size="sm" showBadge={false} />
+            <StatCard label="LOB%" value={fmtPct(ps.lobPct)} statKey="lobPct" rawValue={ps.lobPct} size="sm" />
+            <StatCard label="HR/FB" value={fmtPct(ps.hrfb)} size="sm" showBadge={false} />
+            <StatCard label="xBA" value={fmtAvg(ps.xba)} statKey="xba" rawValue={ps.xba} size="sm" />
+            <StatCard label="xSLG" value={fmtAvg(ps.xslg)} size="sm" showBadge={false} />
+            <StatCard label="GB/Air" value={fmtNum(ps.gbToAir, 2)} size="sm" showBadge={false} />
+            <StatCard label="BABIP" value={fmtAvg(ps.babip)} statKey="babip" rawValue={ps.babip} size="sm" />
           </div>
         </div>
 
-        {/* Plus Stats */}
-        <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
-          <SectionHeader title="Stuff / Location / Pitching+" accent="green" />
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              ['Stuff+', ps.stuffPlus, '#FF5910'],
-              ['Location+', ps.locationPlus, '#22D3A5'],
-              ['Pitching+', ps.pitchingPlus, '#1E6DC5'],
-            ].map(([l, v, c]) => (
-              <div key={String(l)} className="text-center rounded-xl p-3" style={{
-                background: `${c}15`, border: `1px solid ${c}40`,
-              }}>
-                <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: String(c) }}>{String(l)}</div>
-                <div className="font-mono text-2xl font-black" style={{
-                  color: Number(v) >= 130 ? '#FFD700' : Number(v) >= 110 ? '#22D3A5' : Number(v) >= 90 ? '#E8F4FD' : '#FF4D6D',
-                }}>
-                  {fmtPlus(Number(v))}
-                </div>
-                <div className="text-[9px] mt-0.5" style={{ color: '#4A6A88' }}>
-                  {Number(v) >= 130 ? 'ELITE' : Number(v) >= 110 ? 'ABOVE AVG' : Number(v) >= 90 ? 'AVG' : 'BELOW'}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Velocity Trend in Current Game */}
+        {/* Velocity Trend in Current At-Bat */}
         {veloTrend.length > 2 && (
           <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
             <SectionHeader title="Velocity Trend (This At-Bat)" accent="orange" />
@@ -321,7 +301,7 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
         )}
       </div>
 
-      {/* RIGHT COLUMN - Strike Zone + LOB/GB stats */}
+      {/* RIGHT COLUMN */}
       <div className="col-span-4 flex flex-col gap-3">
 
         {/* Strike Zone */}
@@ -329,15 +309,7 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
           <StrikeZone pitches={pitchEvents} size={200} />
         </div>
 
-        {/* Zone Heat Map */}
-        <div className="rounded-xl p-3 flex flex-col items-center" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
-          <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#8BAFC8' }}>
-            Season Hit Zone%
-          </div>
-          <HeatZone data={USAGE_HEAT} size={160} />
-        </div>
-
-        {/* Opponent Batter Analysis */}
+        {/* Opposing Batter Analysis */}
         <div className="rounded-xl p-3" style={{ background: 'rgba(255,89,16,0.05)', border: '1px solid rgba(255,89,16,0.2)' }}>
           <SectionHeader title="Opposing Batter" accent="orange" />
           <div className="space-y-1">
@@ -356,18 +328,18 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
           </div>
         </div>
 
-        {/* Pitching Splits */}
+        {/* Season Line */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Season Line" accent="blue" />
           <div className="space-y-1.5">
             {[
-              ['IP', ps.ip],
-              ['W-L', `${ps.wins}-${ps.losses}`],
-              ['GB%', fmtPct(ps.gbPct)],
+              ['IP', ps.ip ?? '--'],
+              ['W-L', ps.wins !== undefined && ps.losses !== undefined ? `${ps.wins}-${ps.losses}` : '--'],
+              ['K', ps.k !== undefined ? String(ps.k) : '--'],
+              ['BB', ps.bb !== undefined ? String(ps.bb) : '--'],
               ['LOB%', fmtPct(ps.lobPct)],
-              ['Contact%', fmtPct(ps.contactPct)],
-              ['F-Strike%', fmtPct(ps.fStrikePct)],
-              ['WAR', fmtWAR(ps.war)],
+              ['HR/FB', fmtPct(ps.hrfb)],
+              ['GB/Air', fmtNum(ps.gbToAir, 2)],
             ].map(([l, v]) => (
               <div key={String(l)} className="flex justify-between py-1 border-b border-white/5 last:border-0">
                 <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#8BAFC8' }}>{String(l)}</span>
@@ -395,20 +367,16 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
           <SectionHeader title="Complete Season Pitching" accent="orange" />
           <div className="grid grid-cols-8 gap-1">
             {[
-              ['K/9', fmtK9(ps.k9), 'k9', ps.k9],
-              ['BB/9', fmtK9(ps.bb9), undefined, 0],
-              ['H/9', fmtK9(ps.h9), undefined, 0],
-              ['HR/9', fmtK9(ps.hr9), undefined, 0],
-              ['GB%', fmtPct(ps.gbPct), 'gbPctP', ps.gbPct],
-              ['LOB%', fmtPct(ps.lobPct), 'lobPct', ps.lobPct],
-              ['AVG Velo', `${fmtVelo(ps.avgFBVelo)}`, undefined, 0],
-              ['Spin Rate', `${Math.round(ps.avgSpinRate)}`, undefined, 0],
-            ].map(([l, v, k, r]) => (
-              <StatCard key={String(l)} label={String(l)} value={String(v)}
-                statKey={k as string | undefined}
-                rawValue={typeof r === 'number' && k ? r : undefined}
-                size="sm" showBadge={false}
-              />
+              ['K/9', fmtK9(ps.k9)],
+              ['BB/9', fmtK9(ps.bb9)],
+              ['H/9', fmtK9(ps.h9)],
+              ['HR/9', fmtK9(ps.hr9)],
+              ['K/BB', fmtNum(ps.kbb, 2)],
+              ['LOB%', fmtPct(ps.lobPct)],
+              ['xERA', fmtERA(ps.xera)],
+              ['BABIP', fmtAvg(ps.babip)],
+            ].map(([l, v]) => (
+              <StatCard key={String(l)} label={String(l)} value={String(v)} size="sm" showBadge={false} />
             ))}
           </div>
         </div>

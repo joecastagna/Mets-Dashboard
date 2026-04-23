@@ -1,35 +1,172 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { GameState, GameMode, ScheduleGame, PlayerDetailStats } from '../types/mlb'
+import type { GameState, PreGameData, PostGameData, LineupPlayerWithStats, GamePlayerWithStats } from '../types/mlb'
+import type { ScheduleGame } from '../utils/mlbApi'
 import {
   getTodaysGames, getLiveGame, getLastGame, getNextGame,
-  buildPlayerDetailStats, METS_ID, calcWinProbability
+  getPlayerBattingStats, getPlayerPitchingStats,
+  getGameLineup, getFullBoxscore, getScoringPlays,
+  calcWinProbability, METS_ID,
 } from '../utils/mlbApi'
 
-const LIVE_REFRESH_MS = 15_000
-const PREGAME_REFRESH_MS = 60_000
+const LIVE_REFRESH_MS   = 15_000
+const STATIC_REFRESH_MS = 120_000
 
-function isLive(game: ScheduleGame): boolean {
-  const { abstractGameState, codedGameState } = game.status
-  return abstractGameState === 'Live' || codedGameState === 'I'
+function isLive(g: ScheduleGame)    { return g.status.abstractGameState === 'Live'  || g.status.codedGameState === 'I' }
+function isFinal(g: ScheduleGame)   { return g.status.abstractGameState === 'Final' || g.status.codedGameState === 'F' || g.status.codedGameState === 'O' }
+function isPreview(g: ScheduleGame) { return g.status.abstractGameState === 'Preview' || g.status.codedGameState === 'S' || g.status.codedGameState === 'P' }
+
+// ─── Pre-game loader ─────────────────────────────────────────────────────────
+
+async function loadPreGameData(nextGame: ScheduleGame): Promise<PreGameData> {
+  const metsIsHome = nextGame.teams.home.team.id === METS_ID
+
+  // Probable pitchers from the schedule hydration
+  const metsPitcherId   = metsIsHome ? nextGame.probablePitchers?.home?.id : nextGame.probablePitchers?.away?.id
+  const oppPitcherId    = metsIsHome ? nextGame.probablePitchers?.away?.id : nextGame.probablePitchers?.home?.id
+  const metsPitcherInfo = metsIsHome ? nextGame.probablePitchers?.home : nextGame.probablePitchers?.away
+  const oppPitcherInfo  = metsIsHome ? nextGame.probablePitchers?.away : nextGame.probablePitchers?.home
+
+  const [metsPitcherStats, oppPitcherStats] = await Promise.all([
+    metsPitcherId ? getPlayerPitchingStats(metsPitcherId) : Promise.resolve(undefined),
+    oppPitcherId  ? getPlayerPitchingStats(oppPitcherId)  : Promise.resolve(undefined),
+  ])
+
+  // Try to get today's lineup from the game; fall back to last game's lineup
+  let lineupPlayers: LineupPlayerWithStats[] = []
+  const lineupEntries = await getGameLineup(nextGame.gamePk, METS_ID)
+
+  if (lineupEntries.length > 0) {
+    const statsArr = await Promise.all(
+      lineupEntries.map(p => getPlayerBattingStats(p.person.id))
+    )
+    lineupPlayers = lineupEntries.map((p, i) => ({
+      person: p.person,
+      position: p.position,
+      battingOrder: p.battingOrder,
+      stats: statsArr[i],
+    }))
+  } else {
+    // Fall back: last game's batting order
+    const lastGame = await getLastGame()
+    if (lastGame) {
+      const lastLineup = await getGameLineup(lastGame.gamePk, METS_ID)
+      if (lastLineup.length > 0) {
+        const statsArr = await Promise.all(
+          lastLineup.map(p => getPlayerBattingStats(p.person.id))
+        )
+        lineupPlayers = lastLineup.map((p, i) => ({
+          person: p.person,
+          position: p.position,
+          battingOrder: p.battingOrder,
+          stats: statsArr[i],
+        }))
+      }
+    }
+  }
+
+  return {
+    nextGame,
+    metsStarter: metsPitcherInfo
+      ? { person: metsPitcherInfo, stats: metsPitcherStats }
+      : undefined,
+    oppStarter: oppPitcherInfo
+      ? { person: oppPitcherInfo, stats: oppPitcherStats }
+      : undefined,
+    metsLineup: lineupPlayers,
+  }
 }
 
-function isFinal(game: ScheduleGame): boolean {
-  const { abstractGameState, codedGameState } = game.status
-  return abstractGameState === 'Final' || codedGameState === 'F' || codedGameState === 'O'
+// ─── Post-game loader ────────────────────────────────────────────────────────
+
+async function loadPostGameData(lastGame: ScheduleGame): Promise<PostGameData> {
+  const metsIsHome = lastGame.teams.home.team.id === METS_ID
+  const metsScore  = (metsIsHome ? lastGame.teams.home.score : lastGame.teams.away.score) ?? 0
+  const oppScore   = (metsIsHome ? lastGame.teams.away.score : lastGame.teams.home.score) ?? 0
+
+  const [boxscore, scoringPlays] = await Promise.all([
+    getFullBoxscore(lastGame.gamePk),
+    getScoringPlays(lastGame.gamePk),
+  ])
+
+  const metsSide  = metsIsHome ? boxscore?.teams.home : boxscore?.teams.away
+  const battingOrder   = metsSide?.battingOrder   ?? []
+  const pitcherIds     = metsSide?.pitchers        ?? []
+
+  // Fetch season stats for Mets batters and pitchers in parallel
+  const uniqueBatterIds  = battingOrder.slice(0, 9)
+  const uniquePitcherIds = pitcherIds
+
+  const [batterSeasonStats, pitcherSeasonStats] = await Promise.all([
+    Promise.all(uniqueBatterIds.map(id => getPlayerBattingStats(id))),
+    Promise.all(uniquePitcherIds.map(id => getPlayerPitchingStats(id))),
+  ])
+
+  const players = metsSide?.players ?? {}
+
+  const metsBatters: GamePlayerWithStats[] = uniqueBatterIds.map((id, i) => {
+    const p = players[`ID${id}`]
+    const gameBat = p?.stats?.batting as Record<string, unknown> | undefined
+    return {
+      person: p?.person ?? { id, fullName: `Player ${id}`, link: '' },
+      position: p?.position,
+      battingOrder: i + 1,
+      gameStats: {
+        batting: gameBat ? {
+          ab:  Number(gameBat.atBats)      || undefined,
+          r:   Number(gameBat.runs)        || undefined,
+          h:   Number(gameBat.hits)        || undefined,
+          rbi: Number(gameBat.rbi)         || undefined,
+          bb:  Number(gameBat.baseOnBalls) || undefined,
+          k:   Number(gameBat.strikeOuts)  || undefined,
+          hr:  Number(gameBat.homeRuns)    || undefined,
+          sb:  Number(gameBat.stolenBases) || undefined,
+        } : {},
+      },
+      seasonStats: batterSeasonStats[i],
+    }
+  })
+
+  const metsPitchers: GamePlayerWithStats[] = uniquePitcherIds.map((id, i) => {
+    const p = players[`ID${id}`]
+    const gamePit = p?.stats?.pitching as Record<string, unknown> | undefined
+    return {
+      person: p?.person ?? { id, fullName: `Player ${id}`, link: '' },
+      position: { abbreviation: 'P' },
+      gameStats: {
+        pitching: gamePit ? {
+          ip:             String(gamePit.inningsPitched ?? ''),
+          h:              Number(gamePit.hits)          || undefined,
+          r:              Number(gamePit.runs)          || undefined,
+          er:             Number(gamePit.earnedRuns)    || undefined,
+          bb:             Number(gamePit.baseOnBalls)   || undefined,
+          k:              Number(gamePit.strikeOuts)    || undefined,
+          hr:             Number(gamePit.homeRuns)      || undefined,
+          numberOfPitches:Number(gamePit.numberOfPitches) || undefined,
+          era:            String(gamePit.era ?? ''),
+        } : {},
+      },
+      seasonStats: pitcherSeasonStats[i],
+    }
+  })
+
+  return {
+    game: lastGame,
+    metsIsHome,
+    metsScore,
+    oppScore,
+    metsWon: metsScore > oppScore,
+    metsBatters,
+    metsPitchers,
+    scoringPlays,
+  }
 }
 
-function isPreview(game: ScheduleGame): boolean {
-  const { abstractGameState, codedGameState } = game.status
-  return abstractGameState === 'Preview' || codedGameState === 'S' || codedGameState === 'P'
-}
+// ─── Main hook ────────────────────────────────────────────────────────────────
 
 export function useMLBGame(): GameState & { refresh: () => void } {
-  const [state, setState] = useState<GameState>({
-    mode: 'off-day',
-    isLoading: true,
-  })
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const fetchingRef = useRef(false)
+  const [state, setState] = useState<GameState>({ mode: 'off-day', isLoading: true })
+  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fetchingRef  = useRef(false)
 
   const loadState = useCallback(async () => {
     if (fetchingRef.current) return
@@ -37,91 +174,87 @@ export function useMLBGame(): GameState & { refresh: () => void } {
 
     try {
       const todayGames = await getTodaysGames()
-      const liveGame = todayGames.find(isLive)
-      const finalGame = todayGames.find(isFinal)
+      const liveGame   = todayGames.find(isLive)
+      const finalGame  = todayGames.find(isFinal)
       const previewGame = todayGames.find(isPreview)
 
+      // ── LIVE ───────────────────────────────────────────────────────────────
       if (liveGame) {
         const feed = await getLiveGame(liveGame.gamePk)
-        const ls = feed.liveData.linescore
-        const currentPlay = feed.liveData.plays.currentPlay
+        const ls   = feed.liveData.linescore
+        const cp   = feed.liveData.plays.currentPlay
 
-        const metsIsHome = feed.gameData.teams.home.id === METS_ID
-        const metsScore = metsIsHome ? ls.teams.home.runs : ls.teams.away.runs
-        const oppScore = metsIsHome ? ls.teams.away.runs : ls.teams.home.runs
-        const isTopInning = ls.isTopInning
-        const isMetsBatting = metsIsHome ? !isTopInning : isTopInning
+        const metsIsHome    = feed.gameData.teams.home.id === METS_ID
+        const metsScore     = metsIsHome ? ls.teams.home.runs : ls.teams.away.runs
+        const oppScore      = metsIsHome ? ls.teams.away.runs : ls.teams.home.runs
+        const isMetsBatting = metsIsHome ? !ls.isTopInning : ls.isTopInning
 
-        let mode: GameMode = isMetsBatting ? 'live-batting' : 'live-pitching'
+        let currentBatterStats  = undefined
+        let currentPitcherStats = undefined
 
-        const metsTeam = metsIsHome ? feed.liveData.boxscore.teams.home : feed.liveData.boxscore.teams.away
-        let currentBatterStats: PlayerDetailStats | undefined
-        let currentPitcherStats: PlayerDetailStats | undefined
-
-        if (currentPlay) {
-          const batterId = currentPlay.matchup.batter.id
-          const pitcherId = currentPlay.matchup.pitcher.id
-          const isBatterOnMets = batterId in (metsTeam.players ?? {}) ||
-            metsTeam.batters?.includes(batterId)
-
-          if (isMetsBatting) {
-            currentBatterStats = await buildPlayerDetailStats(batterId, 'batter')
-            currentPitcherStats = await buildPlayerDetailStats(pitcherId, 'pitcher')
-          } else {
-            currentBatterStats = await buildPlayerDetailStats(batterId, 'batter')
-            currentPitcherStats = await buildPlayerDetailStats(pitcherId, 'pitcher')
-          }
-          void isBatterOnMets
+        if (cp) {
+          const [bat, pit] = await Promise.all([
+            getPlayerBattingStats(cp.matchup.batter.id),
+            getPlayerPitchingStats(cp.matchup.pitcher.id),
+          ])
+          currentBatterStats  = bat
+          currentPitcherStats = pit
         }
 
-        const winProb = calcWinProbability(
-          metsScore ?? 0, oppScore ?? 0,
-          ls.currentInning, isTopInning, isMetsBatting
-        )
+        void calcWinProbability(metsScore ?? 0, oppScore ?? 0, ls.currentInning, ls.isTopInning, isMetsBatting)
 
         setState({
-          mode,
+          mode: isMetsBatting ? 'live-batting' : 'live-pitching',
           game: feed,
           isMetsBatting,
           currentBatterStats,
           currentPitcherStats,
           isLoading: false,
           lastUpdated: new Date(),
-          metsBullpen: [],
         })
-
-        void winProb
         return
       }
 
-      if (finalGame) {
-        const lastGame = await getLastGame()
+      // ── POST-GAME ─────────────────────────────────────────────────────────
+      if (finalGame || (!previewGame && !liveGame)) {
+        const lastGame = finalGame ?? await getLastGame()
         const nextGame = await getNextGame()
+
+        let postGameData: PostGameData | undefined
+        if (lastGame) {
+          try { postGameData = await loadPostGameData(lastGame) } catch { /* show what we have */ }
+        }
+
         setState({
           mode: 'postgame',
           lastGame: lastGame ?? undefined,
           nextGame: nextGame ?? undefined,
+          postGameData,
           isLoading: false,
           lastUpdated: new Date(),
         })
         return
       }
 
+      // ── PRE-GAME ──────────────────────────────────────────────────────────
       if (previewGame) {
         const lastGame = await getLastGame()
+        let preGameData: PreGameData | undefined
+        try { preGameData = await loadPreGameData(previewGame) } catch { /* show what we have */ }
+
         setState({
           mode: 'pregame',
-          game: undefined,
           nextGame: previewGame,
           lastGame: lastGame ?? undefined,
+          preGameData,
           isLoading: false,
           lastUpdated: new Date(),
         })
         return
       }
 
-      const lastGame = await getLastGame()
-      const nextGame = await getNextGame()
+      // ── OFF-DAY ───────────────────────────────────────────────────────────
+      const [lastGame, nextGame] = await Promise.all([getLastGame(), getNextGame()])
       setState({
         mode: nextGame ? 'pregame' : 'off-day',
         lastGame: lastGame ?? undefined,
@@ -133,28 +266,20 @@ export function useMLBGame(): GameState & { refresh: () => void } {
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: err instanceof Error ? err.message : 'Failed to load game data',
+        error: err instanceof Error ? err.message : 'Failed to load',
       }))
     } finally {
       fetchingRef.current = false
     }
   }, [])
 
-  useEffect(() => {
-    loadState()
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [loadState])
+  useEffect(() => { loadState() }, [loadState])
 
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
     const isLiveMode = state.mode === 'live-batting' || state.mode === 'live-pitching'
-    const delay = isLiveMode ? LIVE_REFRESH_MS : PREGAME_REFRESH_MS
-    intervalRef.current = setInterval(loadState, delay)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
+    intervalRef.current = setInterval(loadState, isLiveMode ? LIVE_REFRESH_MS : STATIC_REFRESH_MS)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [state.mode, loadState])
 
   return { ...state, refresh: loadState }
