@@ -29,7 +29,10 @@ export default function App() {
             ['auto', mode === 'pregame' ? 'Pre-Game' : mode === 'postgame' ? 'Post-Game' : 'Off Day'],
             ['pregame', 'Pre-Game'],
             ['postgame', 'Recap'],
-          ] as [ViewTab, string][]).map(([tab, label]) => {
+          ] as [ViewTab, string][]).filter(([tab]) =>
+            !(tab === 'pregame' && mode === 'pregame') &&
+            !(tab === 'postgame' && mode === 'postgame')
+          ).map(([tab, label]) => {
             const isActive = viewTab === tab
             return (
               <button
