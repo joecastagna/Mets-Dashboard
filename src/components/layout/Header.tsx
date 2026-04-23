@@ -25,29 +25,23 @@ export function Header({ state, onRefresh }: HeaderProps) {
   const isLive = state.mode === 'live-batting' || state.mode === 'live-pitching'
 
   return (
-    <header className="relative z-20 flex items-center justify-between px-4 py-2"
+    <header className="relative z-20 flex items-center justify-between px-3 py-2"
       style={{
         background: 'linear-gradient(180deg, rgba(0,45,114,0.95) 0%, rgba(4,12,24,0.98) 100%)',
         borderBottom: '1px solid rgba(30,109,197,0.3)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
       }}>
 
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <MetsLogo size={28} />
-          <div>
-            <div className="text-xs font-black tracking-[0.2em] uppercase" style={{ color: '#E8F4FD' }}>
-              METS
-            </div>
-            <div className="text-[9px] tracking-widest uppercase" style={{ color: '#8BAFC8' }}>
-              Command Center
-            </div>
-          </div>
+      <div className="flex items-center gap-2">
+        <MetsLogo size={26} />
+        <div className="hidden sm:block">
+          <div className="text-xs font-black tracking-[0.2em] uppercase" style={{ color: '#E8F4FD' }}>METS</div>
+          <div className="text-[9px] tracking-widest uppercase" style={{ color: '#8BAFC8' }}>Command Center</div>
         </div>
 
-        <div className="h-6 w-px mx-1" style={{ background: 'rgba(30,109,197,0.3)' }} />
+        <div className="h-5 w-px mx-1 hidden sm:block" style={{ background: 'rgba(30,109,197,0.3)' }} />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {cfg.pulse && (
             <div className="relative">
               <div className="w-2 h-2 rounded-full" style={{ background: cfg.color }} />
@@ -62,37 +56,27 @@ export function Header({ state, onRefresh }: HeaderProps) {
       </div>
 
       {isLive && ls && homeTeam && awayTeam && (
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-[10px] font-bold tracking-wider uppercase" style={{ color: '#8BAFC8' }}>
-                {awayTeam.abbreviation}
-              </div>
-              <div className="font-mono text-xl font-black" style={{ color: '#E8F4FD' }}>
-                {ls.teams.away.runs ?? 0}
-              </div>
+        <div className="flex items-center gap-2">
+          {/* Compact score for all screens */}
+          <div className="flex items-center gap-1.5 font-mono font-black">
+            <span className="text-[11px]" style={{ color: awayTeam.id === 121 ? '#FF5910' : '#8BAFC8' }}>
+              {awayTeam.abbreviation}
+            </span>
+            <span className="text-base" style={{ color: '#E8F4FD' }}>{ls.teams.away.runs ?? 0}</span>
+            <span className="text-[11px]" style={{ color: '#4A6A88' }}>–</span>
+            <span className="text-base" style={{ color: '#E8F4FD' }}>{ls.teams.home.runs ?? 0}</span>
+            <span className="text-[11px]" style={{ color: homeTeam.id === 121 ? '#FF5910' : '#8BAFC8' }}>
+              {homeTeam.abbreviation}
+            </span>
+          </div>
+          {/* Inning detail - hidden on very small screens */}
+          <div className="hidden sm:flex flex-col items-center px-2 border-l border-r"
+            style={{ borderColor: 'rgba(30,109,197,0.3)' }}>
+            <div className="text-[9px] font-bold tracking-widest" style={{ color: '#8BAFC8' }}>
+              {ls.inningHalf === 'Top' ? '▲' : '▼'} {ls.currentInningOrdinal}
             </div>
-
-            <div className="text-center px-3">
-              <div className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#8BAFC8' }}>
-                {ls.currentInningOrdinal}
-              </div>
-              <div className="text-[11px] font-bold" style={{ color: '#4A6A88' }}>
-                {ls.inningHalf === 'Top' ? '▲' : '▼'}
-              </div>
-              <div className="font-mono text-[11px] font-bold" style={{ color: '#8BAFC8' }}>
-                {ls.balls ?? 0}-{ls.strikes ?? 0} · {ls.outs ?? 0} OUT{ls.outs !== 1 ? 'S' : ''}
-              </div>
-            </div>
-
-            <div className="text-left">
-              <div className="text-[10px] font-bold tracking-wider uppercase flex items-center gap-1" style={{ color: '#1E6DC5' }}>
-                {homeTeam.abbreviation}
-                {homeTeam.id === 121 && <span style={{ color: '#FF5910' }}>◆</span>}
-              </div>
-              <div className="font-mono text-xl font-black" style={{ color: '#E8F4FD' }}>
-                {ls.teams.home.runs ?? 0}
-              </div>
+            <div className="font-mono text-[10px] font-bold" style={{ color: '#8BAFC8' }}>
+              {ls.balls ?? 0}-{ls.strikes ?? 0} · {ls.outs ?? 0} out{ls.outs !== 1 ? 's' : ''}
             </div>
           </div>
         </div>
@@ -116,21 +100,16 @@ export function Header({ state, onRefresh }: HeaderProps) {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
-        {state.error ? (
-          <div className="flex items-center gap-1" style={{ color: '#FF4D6D' }}>
-            <WifiOff size={12} />
-            <span className="text-[10px]">Error</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1" style={{ color: '#22D3A5' }}>
-            <Wifi size={12} />
-            <span className="text-[10px]">Live</span>
-          </div>
-        )}
+      <div className="flex items-center gap-2">
+        {/* Connection status dot — always visible */}
+        {state.error
+          ? <WifiOff size={12} style={{ color: '#FF4D6D' }} />
+          : <Wifi size={12} className="hidden sm:block" style={{ color: '#22D3A5' }} />
+        }
 
+        {/* Timestamp — desktop only */}
         {now && (
-          <div className="flex items-center gap-1" style={{ color: '#4A6A88' }}>
+          <div className="hidden md:flex items-center gap-1" style={{ color: '#4A6A88' }}>
             <Clock size={10} />
             <span className="text-[10px] font-mono">
               {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -145,13 +124,13 @@ export function Header({ state, onRefresh }: HeaderProps) {
           disabled={state.isLoading}
         >
           <RefreshCw size={12} className={state.isLoading ? 'animate-spin' : ''} />
-          <span className="text-[10px]">Refresh</span>
+          <span className="text-[10px] hidden sm:inline">Refresh</span>
         </button>
 
         {isLive && (
-          <div className="flex items-center gap-1" style={{ color: '#22D3A5' }}>
+          <div className="hidden sm:flex items-center gap-1" style={{ color: '#22D3A5' }}>
             <Activity size={12} />
-            <span className="text-[10px]">Auto 15s</span>
+            <span className="text-[10px]">15s</span>
           </div>
         )}
       </div>

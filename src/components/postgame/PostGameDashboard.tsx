@@ -112,7 +112,7 @@ export function PostGameDashboard({ state }: PostGameDashboardProps) {
           </div>
 
           {/* Quick game totals */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
             {[
               { label: 'HITS', value: String(teamH), color: '#22D3A5' },
               { label: 'HR', value: String(teamHR), color: '#FFD700' },
@@ -132,10 +132,10 @@ export function PostGameDashboard({ state }: PostGameDashboardProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
 
-        {/* LEFT: Scoring Plays */}
-        <div className="col-span-4 flex flex-col gap-3">
+        {/* LEFT: Scoring Plays — visually 1st on desktop, 2nd on mobile */}
+        <div className="order-2 lg:order-1 lg:col-span-4 flex flex-col gap-3">
 
           <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
             <SectionHeader title="Scoring Plays" accent="orange" />
@@ -201,8 +201,8 @@ export function PostGameDashboard({ state }: PostGameDashboardProps) {
           )}
         </div>
 
-        {/* CENTER: Box Scores */}
-        <div className="col-span-5 flex flex-col gap-3">
+        {/* CENTER: Box Scores — visually 2nd on desktop, 1st on mobile */}
+        <div className="order-1 lg:order-2 lg:col-span-5 flex flex-col gap-3">
 
           {/* Batting Box Score */}
           <div className="rounded-xl overflow-hidden" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
@@ -328,7 +328,7 @@ export function PostGameDashboard({ state }: PostGameDashboardProps) {
         </div>
 
         {/* RIGHT: Highlights + Next Game */}
-        <div className="col-span-3 flex flex-col gap-3">
+        <div className="order-3 lg:col-span-3 flex flex-col gap-3">
 
           {/* Game Highlights — derived from real box score */}
           <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>

@@ -226,10 +226,10 @@ export function PreGameDashboard({ state }: PreGameDashboardProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
 
         {/* LEFT: Pitcher Matchup */}
-        <div className="col-span-4 flex flex-col gap-3">
+        <div className="lg:col-span-4 flex flex-col gap-3">
           <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
             <SectionHeader title="Starting Pitcher Matchup" accent="blue" />
             <div className="flex gap-3">
@@ -303,7 +303,7 @@ export function PreGameDashboard({ state }: PreGameDashboardProps) {
         </div>
 
         {/* CENTER: Lineup */}
-        <div className="col-span-8">
+        <div className="lg:col-span-8">
           <div className="rounded-xl overflow-hidden h-full" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
             <div className="px-3 py-2 flex items-center justify-between" style={{ background: 'rgba(0,45,114,0.5)' }}>
               <div className="flex items-center gap-2">

@@ -50,65 +50,55 @@ export function LiveGameDashboard({ state }: LiveGameDashboardProps) {
     <div className="flex flex-col h-full">
 
       {/* Game Scoreboard Strip */}
-      <div className="px-3 py-2 flex items-center gap-4"
+      <div className="px-2 py-1.5 flex items-center gap-2"
         style={{ background: '#070F1C', borderBottom: '1px solid #1A2E48' }}>
 
         {/* Mode Badge */}
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full" style={{
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full flex-shrink-0" style={{
           background: modeBg, border: `1px solid ${modeColor}40`,
         }}>
           <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: modeColor }} />
-          <span className="text-[10px] font-black tracking-widest" style={{ color: modeColor }}>
+          <span className="text-[10px] font-black tracking-widest hidden sm:inline" style={{ color: modeColor }}>
             {modeLabel}
           </span>
         </div>
 
-        {/* Inning Scoreboard */}
-        <div className="flex items-center gap-1 overflow-x-auto flex-1">
-          <div className="text-[10px] font-bold w-16 flex-shrink-0" style={{ color: '#4A6A88' }}>TEAM</div>
+        {/* Inning-by-inning linescore — scrolls on mobile */}
+        <div className="flex items-center gap-0.5 overflow-x-auto flex-1 min-w-0">
+          <div className="text-[9px] font-bold w-10 flex-shrink-0" style={{ color: '#4A6A88' }}>TEAM</div>
           {innings.map(inn => (
-            <div key={inn.num} className="text-center w-7 flex-shrink-0"
+            <div key={inn.num} className="text-center w-6 flex-shrink-0"
               style={{
                 background: inn.num === ls.currentInning ? 'rgba(30,109,197,0.2)' : 'transparent',
-                borderRadius: 4,
+                borderRadius: 3,
               }}>
-              <div className="text-[9px]" style={{ color: '#4A6A88' }}>{inn.num}</div>
-              <div className="text-[10px] font-mono font-bold" style={{ color: '#8BAFC8' }}>
-                {inn.away.runs ?? '-'}
-              </div>
-              <div className="text-[10px] font-mono font-bold" style={{ color: '#8BAFC8' }}>
-                {inn.home.runs ?? '-'}
-              </div>
+              <div className="text-[8px]" style={{ color: '#4A6A88' }}>{inn.num}</div>
+              <div className="text-[9px] font-mono font-bold" style={{ color: '#8BAFC8' }}>{inn.away.runs ?? '-'}</div>
+              <div className="text-[9px] font-mono font-bold" style={{ color: '#8BAFC8' }}>{inn.home.runs ?? '-'}</div>
             </div>
           ))}
-          <div className="text-center w-7 flex-shrink-0 ml-1">
-            <div className="text-[9px] font-bold" style={{ color: '#8BAFC8' }}>R</div>
-            <div className="text-[11px] font-mono font-black" style={{ color: '#E8F4FD' }}>{metsIsHome ? ls.teams.away.runs : ls.teams.home.runs}</div>
-            <div className="text-[11px] font-mono font-black" style={{ color: '#FF5910' }}>{metsScore}</div>
+          <div className="text-center w-6 flex-shrink-0 ml-1">
+            <div className="text-[8px] font-bold" style={{ color: '#8BAFC8' }}>R</div>
+            <div className="text-[10px] font-mono font-black" style={{ color: '#E8F4FD' }}>{metsIsHome ? ls.teams.away.runs : ls.teams.home.runs}</div>
+            <div className="text-[10px] font-mono font-black" style={{ color: '#FF5910' }}>{metsScore}</div>
           </div>
-          <div className="text-center w-7 flex-shrink-0">
-            <div className="text-[9px] font-bold" style={{ color: '#8BAFC8' }}>H</div>
-            <div className="text-[11px] font-mono" style={{ color: '#8BAFC8' }}>{metsIsHome ? ls.teams.away.hits : ls.teams.home.hits}</div>
-            <div className="text-[11px] font-mono" style={{ color: '#8BAFC8' }}>{metsIsHome ? ls.teams.home.hits : ls.teams.away.hits}</div>
-          </div>
-          <div className="text-center w-7 flex-shrink-0">
-            <div className="text-[9px] font-bold" style={{ color: '#8BAFC8' }}>E</div>
-            <div className="text-[11px] font-mono" style={{ color: '#8BAFC8' }}>{metsIsHome ? ls.teams.away.errors : ls.teams.home.errors}</div>
-            <div className="text-[11px] font-mono" style={{ color: '#8BAFC8' }}>{metsIsHome ? ls.teams.home.errors : ls.teams.away.errors}</div>
+          <div className="text-center w-6 flex-shrink-0 hidden sm:block">
+            <div className="text-[8px] font-bold" style={{ color: '#8BAFC8' }}>H</div>
+            <div className="text-[10px] font-mono" style={{ color: '#8BAFC8' }}>{metsIsHome ? ls.teams.away.hits : ls.teams.home.hits}</div>
+            <div className="text-[10px] font-mono" style={{ color: '#8BAFC8' }}>{metsIsHome ? ls.teams.home.hits : ls.teams.away.hits}</div>
           </div>
         </div>
 
-        {/* Teams row labels */}
-        <div className="flex flex-col gap-0.5 w-16 flex-shrink-0">
+        {/* Teams labels */}
+        <div className="flex flex-col gap-0.5 w-10 flex-shrink-0">
           <div className="text-[9px] font-bold truncate" style={{ color: '#8BAFC8' }}>{oppTeam.abbreviation}</div>
           <div className="text-[9px] font-bold truncate" style={{ color: '#FF5910' }}>{metsTeam.abbreviation}</div>
         </div>
 
-        <div className="flex items-center gap-3 ml-auto">
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           <BaseRunners onFirst={onFirst} onSecond={onSecond} onThird={onThird} outs={outs} size="sm" />
           <div className="text-center">
-            <div className="text-[9px]" style={{ color: '#4A6A88' }}>SCORE</div>
-            <div className="font-mono font-black text-lg" style={{ color: '#E8F4FD' }}>
+            <div className="font-mono font-black text-base" style={{ color: '#E8F4FD' }}>
               <span style={{ color: '#FF5910' }}>{metsScore ?? 0}</span>
               <span style={{ color: '#4A6A88' }}>–</span>
               <span>{oppScore ?? 0}</span>

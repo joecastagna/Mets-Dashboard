@@ -83,10 +83,10 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
   const inningLabel = inningDisplay(ls.currentInning, ls.isTopInning)
 
   return (
-    <div className="grid grid-cols-12 gap-3 p-3 animate-fade-in">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 p-2 lg:p-3 animate-fade-in">
 
       {/* LEFT COLUMN - Batter Info + Core Stats */}
-      <div className="col-span-3 flex flex-col gap-3">
+      <div className="lg:col-span-3 flex flex-col gap-3">
 
         {/* Batter Card */}
         <div className="rounded-xl p-4" style={{
@@ -210,7 +210,7 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
       </div>
 
       {/* CENTER COLUMN - Advanced Stats + Charts */}
-      <div className="col-span-5 flex flex-col gap-3">
+      <div className="lg:col-span-5 flex flex-col gap-3">
 
         {/* Win Probability */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
@@ -225,7 +225,7 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
         {/* Advanced Batting Metrics */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Advanced Metrics" accent="blue" />
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <StatCard label="wOBA" value={fmtAvg(bs.woba)} statKey="woba" rawValue={bs.woba} size="sm" />
             <StatCard label="wRC+" value={fmtPlus(bs.wrcPlus)} statKey="wrcPlus" rawValue={bs.wrcPlus} size="sm" />
             <StatCard label="ISO" value={fmtAvg(bs.iso)} statKey="iso" rawValue={bs.iso} size="sm" />
@@ -263,7 +263,7 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
         {/* Season Counting Stats */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Season Counting Stats" accent="green" />
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-4 gap-2">
             <StatCard label="HR" value={fmtInt(bs.hr)} size="sm" showBadge={false} />
             <StatCard label="RBI" value={fmtInt(bs.rbi)} size="sm" showBadge={false} />
             <StatCard label="R" value={fmtInt(bs.runs)} size="sm" showBadge={false} />
@@ -277,7 +277,7 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
       </div>
 
       {/* RIGHT COLUMN - Charts */}
-      <div className="col-span-4 flex flex-col gap-3">
+      <div className="lg:col-span-4 flex flex-col gap-3">
 
         {/* Strike Zone Map */}
         <div className="rounded-xl p-3 flex flex-col items-center" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
@@ -331,10 +331,10 @@ export function BattingMode({ feed, batterStats, isMetsBatting }: BattingModePro
       </div>
 
       {/* BOTTOM ROW - Full stat table */}
-      <div className="col-span-12">
+      <div className="lg:col-span-12">
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Complete Season Stats" accent="blue" />
-          <div className="grid grid-cols-8 gap-1">
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1">
             {[
               ['G', fmtInt(bs.gamesPlayed)],
               ['PA', fmtInt(bs.pa)],

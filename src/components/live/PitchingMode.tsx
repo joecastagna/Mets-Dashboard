@@ -79,10 +79,10 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
   const pitchMix = ps.pitchMix ?? []
 
   return (
-    <div className="grid grid-cols-12 gap-3 p-3 animate-fade-in">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 p-2 lg:p-3 animate-fade-in">
 
       {/* LEFT COLUMN - Pitcher Info + ERA/FIP */}
-      <div className="col-span-3 flex flex-col gap-3">
+      <div className="lg:col-span-3 flex flex-col gap-3">
 
         {/* Pitcher Card */}
         <div className="rounded-xl p-4" style={{
@@ -219,7 +219,7 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
       </div>
 
       {/* CENTER COLUMN */}
-      <div className="col-span-5 flex flex-col gap-3">
+      <div className="lg:col-span-5 flex flex-col gap-3">
 
         {/* Win Probability */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
@@ -270,7 +270,7 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
         {/* Advanced Pitching Metrics */}
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Advanced Metrics" accent="blue" />
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <StatCard label="K%" value={fmtPct(ps.kPct)} statKey="kPctP" rawValue={ps.kPct} size="sm" />
             <StatCard label="BB%" value={fmtPct(ps.bbPct)} statKey="bbPctP" rawValue={ps.bbPct} size="sm" />
             <StatCard label="LOB%" value={fmtPct(ps.lobPct)} statKey="lobPct" rawValue={ps.lobPct} size="sm" />
@@ -302,7 +302,7 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
       </div>
 
       {/* RIGHT COLUMN */}
-      <div className="col-span-4 flex flex-col gap-3">
+      <div className="lg:col-span-4 flex flex-col gap-3">
 
         {/* Strike Zone */}
         <div className="rounded-xl p-3 flex flex-col items-center" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
@@ -362,10 +362,10 @@ export function PitchingMode({ feed, pitcherStats, batterStats, isMetsPitching }
       </div>
 
       {/* BOTTOM - Full stats row */}
-      <div className="col-span-12">
+      <div className="lg:col-span-12">
         <div className="rounded-xl p-3" style={{ background: '#0A1628', border: '1px solid #1A2E48' }}>
           <SectionHeader title="Complete Season Pitching" accent="orange" />
-          <div className="grid grid-cols-8 gap-1">
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1">
             {[
               ['K/9', fmtK9(ps.k9)],
               ['BB/9', fmtK9(ps.bb9)],

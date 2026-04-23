@@ -23,12 +23,12 @@ export default function App() {
 
       {/* Mode Tabs (only shown when not in live mode) */}
       {!isLive && (
-        <div className="flex items-center gap-1 px-3 py-1.5"
+        <div className="flex items-center gap-1 px-3 py-1.5 overflow-x-auto"
           style={{ background: '#070F1C', borderBottom: '1px solid #1A2E48' }}>
           {([
             ['auto', mode === 'pregame' ? 'Pre-Game' : mode === 'postgame' ? 'Post-Game' : 'Off Day'],
-            ['pregame', 'Pre-Game Analysis'],
-            ['postgame', 'Game Recap'],
+            ['pregame', 'Pre-Game'],
+            ['postgame', 'Recap'],
           ] as [ViewTab, string][]).map(([tab, label]) => {
             const isActive = viewTab === tab
             return (
@@ -106,19 +106,10 @@ export default function App() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-1.5"
-        style={{
-          background: '#070F1C',
-          borderTop: '1px solid #1A2E48',
-        }}>
+      <div className="flex items-center justify-center px-3 py-1"
+        style={{ background: '#070F1C', borderTop: '1px solid #1A2E48' }}>
         <div className="text-[10px]" style={{ color: '#2A4A6A' }}>
-          Data: MLB Stats API · Advanced stats: FanGraphs formulas
-        </div>
-        <div className="text-[10px]" style={{ color: '#2A4A6A' }}>
-          Mets Command Center v1.0 · Auto-refresh {isLive ? '15s' : '60s'}
-        </div>
-        <div className="text-[10px]" style={{ color: '#2A4A6A' }}>
-          © {new Date().getFullYear()} · For entertainment
+          MLB Stats API · Auto-refresh {isLive ? '15s' : '2min'} · © {new Date().getFullYear()}
         </div>
       </div>
     </div>
