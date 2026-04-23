@@ -5,7 +5,7 @@ import {
   getTodaysGames, getLiveGame, getLastGame, getNextGame,
   getPlayerBattingStats, getPlayerPitchingStats,
   getGameLineup, getFullBoxscore, getScoringPlays,
-  calcWinProbability, METS_ID,
+  calcWinProbability, METS_ID, parseNum,
 } from '../utils/mlbApi'
 
 const LIVE_REFRESH_MS   = 15_000
@@ -105,21 +105,21 @@ async function loadPostGameData(lastGame: ScheduleGame): Promise<PostGameData> {
 
   const metsBatters: GamePlayerWithStats[] = uniqueBatterIds.map((id, i) => {
     const p = players[`ID${id}`]
-    const gameBat = p?.stats?.batting as Record<string, unknown> | undefined
+    const gameBat = p?.stats?.batting
     return {
       person: p?.person ?? { id, fullName: `Player ${id}`, link: '' },
       position: p?.position,
       battingOrder: i + 1,
       gameStats: {
         batting: gameBat ? {
-          ab:  Number(gameBat.atBats)      || undefined,
-          r:   Number(gameBat.runs)        || undefined,
-          h:   Number(gameBat.hits)        || undefined,
-          rbi: Number(gameBat.rbi)         || undefined,
-          bb:  Number(gameBat.baseOnBalls) || undefined,
-          k:   Number(gameBat.strikeOuts)  || undefined,
-          hr:  Number(gameBat.homeRuns)    || undefined,
-          sb:  Number(gameBat.stolenBases) || undefined,
+          ab:  parseNum(gameBat.atBats),
+          r:   parseNum(gameBat.runs),
+          h:   parseNum(gameBat.hits),
+          rbi: parseNum(gameBat.rbi),
+          bb:  parseNum(gameBat.baseOnBalls),
+          k:   parseNum(gameBat.strikeOuts),
+          hr:  parseNum(gameBat.homeRuns),
+          sb:  parseNum(gameBat.stolenBases),
         } : {},
       },
       seasonStats: batterSeasonStats[i],
@@ -128,21 +128,21 @@ async function loadPostGameData(lastGame: ScheduleGame): Promise<PostGameData> {
 
   const metsPitchers: GamePlayerWithStats[] = uniquePitcherIds.map((id, i) => {
     const p = players[`ID${id}`]
-    const gamePit = p?.stats?.pitching as Record<string, unknown> | undefined
+    const gamePit = p?.stats?.pitching
     return {
       person: p?.person ?? { id, fullName: `Player ${id}`, link: '' },
       position: { abbreviation: 'P' },
       gameStats: {
         pitching: gamePit ? {
-          ip:             String(gamePit.inningsPitched ?? ''),
-          h:              Number(gamePit.hits)          || undefined,
-          r:              Number(gamePit.runs)          || undefined,
-          er:             Number(gamePit.earnedRuns)    || undefined,
-          bb:             Number(gamePit.baseOnBalls)   || undefined,
-          k:              Number(gamePit.strikeOuts)    || undefined,
-          hr:             Number(gamePit.homeRuns)      || undefined,
-          numberOfPitches:Number(gamePit.numberOfPitches) || undefined,
-          era:            String(gamePit.era ?? ''),
+          ip:             gamePit.inningsPitched ? String(gamePit.inningsPitched) : undefined,
+          h:              parseNum(gamePit.hits),
+          r:              parseNum(gamePit.runs),
+          er:             parseNum(gamePit.earnedRuns),
+          bb:             parseNum(gamePit.baseOnBalls),
+          k:              parseNum(gamePit.strikeOuts),
+          hr:             parseNum(gamePit.homeRuns),
+          numberOfPitches:parseNum(gamePit.numberOfPitches),
+          era:            gamePit.era ? String(gamePit.era) : undefined,
         } : {},
       },
       seasonStats: pitcherSeasonStats[i],
@@ -222,7 +222,7 @@ export function useMLBGame(): GameState & { refresh: () => void } {
 
         let postGameData: PostGameData | undefined
         if (lastGame) {
-          try { postGameData = await loadPostGameData(lastGame) } catch { /* show what we have */ }
+          try { postGameData = await loadPostGameData(lastGame) } catch (e) { console.error('loadPostGameData failed:', e) }
         }
 
         setState({
@@ -240,13 +240,18 @@ export function useMLBGame(): GameState & { refresh: () => void } {
       if (previewGame) {
         const lastGame = await getLastGame()
         let preGameData: PreGameData | undefined
-        try { preGameData = await loadPreGameData(previewGame) } catch { /* show what we have */ }
+        let postGameData: PostGameData | undefined
+        await Promise.all([
+          (async () => { try { preGameData = await loadPreGameData(previewGame) } catch (e) { console.error('loadPreGameData failed:', e) } })(),
+          (async () => { if (lastGame) try { postGameData = await loadPostGameData(lastGame) } catch (e) { console.error('loadPostGameData failed:', e) } })(),
+        ])
 
         setState({
           mode: 'pregame',
           nextGame: previewGame,
           lastGame: lastGame ?? undefined,
           preGameData,
+          postGameData,
           isLoading: false,
           lastUpdated: new Date(),
         })
@@ -255,10 +260,15 @@ export function useMLBGame(): GameState & { refresh: () => void } {
 
       // ── OFF-DAY ───────────────────────────────────────────────────────────
       const [lastGame, nextGame] = await Promise.all([getLastGame(), getNextGame()])
+      let postGameData: PostGameData | undefined
+      if (lastGame) {
+        try { postGameData = await loadPostGameData(lastGame) } catch (e) { console.error('loadPostGameData failed:', e) }
+      }
       setState({
         mode: nextGame ? 'pregame' : 'off-day',
         lastGame: lastGame ?? undefined,
         nextGame: nextGame ?? undefined,
+        postGameData,
         isLoading: false,
         lastUpdated: new Date(),
       })
