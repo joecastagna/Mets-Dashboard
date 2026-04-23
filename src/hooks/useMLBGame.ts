@@ -89,11 +89,11 @@ async function loadPostGameData(lastGame: ScheduleGame): Promise<PostGameData> {
   ])
 
   const metsSide  = metsIsHome ? boxscore?.teams.home : boxscore?.teams.away
-  const battingOrder   = metsSide?.battingOrder   ?? []
-  const pitcherIds     = metsSide?.pitchers        ?? []
+  const batterIds  = metsSide?.batters  ?? []
+  const pitcherIds = metsSide?.pitchers ?? []
 
   // Fetch season stats for Mets batters and pitchers in parallel
-  const uniqueBatterIds  = battingOrder.slice(0, 9)
+  const uniqueBatterIds  = batterIds
   const uniquePitcherIds = pitcherIds
 
   const [batterSeasonStats, pitcherSeasonStats] = await Promise.all([
